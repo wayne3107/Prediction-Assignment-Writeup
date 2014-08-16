@@ -1,0 +1,64 @@
+Prediction Assignment Writeup
+==============================
+name: Zeng Mingwei  
+email: 341445826@qq.com
+
+### Read data
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+```{r,cache=TRUE}
+train.data <- read.csv('pml-training.csv')
+test.data <- read.csv('pml-testing.csv')
+```
+
+### Predictor selection
+
+Let's view the data first.
+
+```{r,results='hide'}
+head(train.data)
+```
+
+We notice that there are many variables contain empty values or NA, which I think is hard to implement as predictor. And for sport devices' intension, I think it is reasonable and implementable to use divces' record data to predict the patterns in the behaviror. So I select the predictors as below:
+
+```{r}
+variable.index <- grep('^roll|^pitch|^yaw|^gyros|^accel|^magnet',names(train.data))
+train.data <- train.data[,c(variable.index,ncol(train.data))]
+names(train.data[,-ncol(train.data)])
+```
+
+### Model building
+
+In order to test the model accuracy, before training the machine learning model we should further separate the train.data into training and testing data and use the testing data to estimate the out of sample error.
+
+```{r}
+library(caret)
+library(randomForest)
+trainInd <- createDataPartition(y=train.data$classe,p=0.6,list=FALSE)
+training <- train.data[trainInd,]
+testing <- train.data[-trainInd,]
+```
+
+Then I apply train function to build a random forest model, and use cross validation by setting the trainControl method equal to 'cv':
+```{r,cache=TRUE}
+model <- train(classe ~ .,data=training,method='rf',trControl=trainControl(method='cv',number=5))
+model
+model$finalModel
+```
+
+### Model accuracy
+
+```{r}
+estimate.out.of.sample.error.rate <- sum(predict(model,testing)!=testing$classe)/nrow(testing)
+estimate.out.of.sample.error.rate
+```
+
+### Prediction
+
+At last, I apply this model to predict the 20 test cases, and the answers are:
+
+```{r}
+answers <- as.character(predict(model,test.data))
+answers
+```
